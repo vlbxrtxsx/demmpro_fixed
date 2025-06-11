@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "873321396233",
+    "project_id": "demmpro2",
+    "storage_bucket": "demmpro2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:873321396233:android:da271eb9683dd3aafd60d8",
+        "android_client_info": {
+          "package_name": "com.demmpro.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGDX361IjwbE0RQ6e6Fp676gQuFifzgeY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

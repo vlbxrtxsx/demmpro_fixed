@@ -1,0 +1,73 @@
+// 1. PLUGINS - Necesarios para funcionalidad
+plugins {
+    id "com.android.application"      // Para compilar Android
+    id "kotlin-android"               // Para soporte Kotlin
+    id "dev.flutter.flutter-gradle-plugin"  // Para Flutter
+    id 'com.google.gms.google-services'     // Para Firebase
+}
+
+// 2. PROPIEDADES LOCALES - Para versioning
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
+// 3. CONFIGURACIÓN ANDROID - CRÍTICA para compilación
+android {
+    namespace "com.demmpro.app"
+    compileSdk 34                    // Versión de Android SDK
+    ndkVersion "25.1.8937393"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    defaultConfig {
+        applicationId "com.demmpro.app"  // ID único de tu app
+        minSdkVersion 21                 // Android mínimo soportado
+        targetSdkVersion 34              // Android objetivo
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+        multiDexEnabled true             // Para apps grandes
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+// 4. FLUTTER - Necesario para Flutter
+flutter {
+    source '../..'
+}
+
+// 5. DEPENDENCIAS - Para Firebase y multidex
+dependencies {
+    implementation 'androidx.multidex:multidex:2.0.1'
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation 'com.google.firebase:firebase-auth-ktx'
+    implementation 'com.google.firebase:firebase-messaging-ktx'
+}
+
+// 6. PLUGIN FIREBASE - Al final
+apply plugin: 'com.google.gms.google-services'
