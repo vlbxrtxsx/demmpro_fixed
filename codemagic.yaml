@@ -14,20 +14,19 @@ workflows:
       - name: Flutter unit tests
         script: |
           flutter test || true
-      - name: Update iOS deployment target in project
+      - name: FORCE iOS 13.0 everywhere
         script: |
-          # Actualizar TODAS las referencias de versión iOS en el proyecto
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 9.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 10.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 11.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
-      - name: Update Podfile completely
+          # FORZAR iOS 13.0 en TODOS los archivos del proyecto
+          find ios -name "*.pbxproj" -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9]*\.[0-9]*/IPHONEOS_DEPLOYMENT_TARGET = 13.0/g' {} \;
+          find ios -name "*.pbxproj" -exec sed -i '' 's/ios[0-9]*\.[0-9]*/ios13.0/g' {} \;
+          find ios -name "*.pbxproj" -exec sed -i '' 's/arm64-apple-ios[0-9]*\.[0-9]*/arm64-apple-ios13.0/g' {} \;
+      - name: FORCE create new Podfile with iOS 13.0
         script: |
-          # Crear un Podfile completamente nuevo con iOS 12.0
+          # ELIMINAR completamente el Podfile existente y crear uno nuevo
+          rm -f ios/Podfile
           cat > ios/Podfile << 'EOF'
-          # Uncomment this line to define a global platform for your project
-          platform :ios, '12.0'
+          platform :ios, '13.0'
 
-          # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
           ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
           project 'Runner', {
@@ -59,38 +58,57 @@ workflows:
 
             flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
             
-            # Forzar iOS 12.0 para todos los pods
             post_install do |installer|
               installer.pods_project.targets.each do |target|
                 flutter_additional_ios_build_settings(target)
                 target.build_configurations.each do |config|
-                  config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+                  # FORZAR iOS 13.0 para TODOS los pods
+                  config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
                   config.build_settings['ENABLE_BITCODE'] = 'NO'
+                  config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
+                  # Eliminar configuraciones problemáticas
+                  config.build_settings.delete('ARCHS')
+                  config.build_settings['VALID_ARCHS'] = 'arm64'
                 end
+              end
+              
+              # FORZAR configuraciones en el proyecto principal
+              installer.pods_project.build_configurations.each do |config|
+                config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
               end
             end
           end
           EOF
-      - name: Clean and reinstall pods completely
+      - name: NUCLEAR clean and reinstall
         script: |
           cd ios
-          # Limpiar completamente
+          # ELIMINACIÓN NUCLEAR de todo
           rm -rf Pods
           rm -rf .symlinks
           rm -rf Flutter/Flutter.framework
           rm -rf Flutter/Flutter.podspec
+          rm -rf Flutter/Generated.xcconfig
           rm -f Podfile.lock
-          # Reinstalar
-          pod install --repo-update
+          rm -rf build
+          rm -rf DerivedData
+          # Limpiar cache de CocoaPods
+          pod cache clean --all
+          # Reinstalar desde cero
+          pod install --repo-update --clean-install
           cd ..
-      - name: Clean Flutter build
+      - name: NUCLEAR Flutter clean
         script: |
           flutter clean
+          rm -rf build
           flutter pub get
-      - name: Build ipa for distribution
+          flutter pub deps
+      - name: Build with FORCED settings
         script: |
-          # Comando correcto para iOS sin codesigning
-          flutter build ios --release --no-codesign
+          # Configurar variables de entorno para forzar iOS 13.0
+          export IPHONEOS_DEPLOYMENT_TARGET=13.0
+          export FLUTTER_BUILD_MODE=release
+          # Build final
+          flutter build ios --release --no-codesign --verbose
     artifacts:
       - build/ios/iphoneos/Runner.app
       - /tmp/xcodebuild_logs/*.log
