@@ -22,9 +22,9 @@ workflows:
       - name: Update Podfile iOS platform
         script: |
           # Actualizar la versión mínima de iOS en el Podfile a 12.0
-          sed -i '' 's/platform :ios, \'9.0\'/platform :ios, \'12.0\'/g' ios/Podfile
-          sed -i '' 's/platform :ios, \'10.0\'/platform :ios, \'12.0\'/g' ios/Podfile
-          sed -i '' 's/platform :ios, \'11.0\'/platform :ios, \'12.0\'/g' ios/Podfile
+          sed -i '' "s/platform :ios, '9.0'/platform :ios, '12.0'/g" ios/Podfile
+          sed -i '' "s/platform :ios, '10.0'/platform :ios, '12.0'/g" ios/Podfile
+          sed -i '' "s/platform :ios, '11.0'/platform :ios, '12.0'/g" ios/Podfile
       - name: Clean and reinstall pods
         script: |
           cd ios
