@@ -14,7 +14,7 @@ workflows:
       - name: Flutter unit tests
         script: |
           flutter test || true
-      - name: ULTRA FORCE - iOS 12.0
+      - name: ULTRA FORCE - iOS 12.0 + Eliminar -G
         script: |
           # Crear un script que modificará TODOS los archivos de configuración
           cat > fix_ios_build.sh << 'EOF'
@@ -89,23 +89,41 @@ workflows:
           pod install --repo-update
           cd ..
           
-          # 5. FORZAR cambios en TODOS los archivos de configuración de pods
-          echo "🔧 Forzando configuración en TODOS los archivos de pods..."
+          # 5. BÚSQUEDA Y ELIMINACIÓN EXHAUSTIVA DE LA OPCIÓN -G
+          echo "🔧 ELIMINANDO OPCIÓN -G DE TODOS LOS ARCHIVOS..."
+          
+          # Buscar en TODOS los archivos de configuración
+          find ios -type f $$ -name "*.xcconfig" -o -name "*.pbxproj" -o -name "*.plist" $$ -exec grep -l "\-G" {} \; | while read file; do
+            echo "🔧 Procesando: $file"
+            # Eliminar -G seguido de espacio
+            sed -i '' 's/-G / /g' "$file"
+            # Eliminar -G al final de línea
+            sed -i '' 's/-G$//g' "$file"
+            # Eliminar -G seguido de cualquier carácter no alfanumérico
+            sed -i '' 's/-G$$[^a-zA-Z0-9]$$/ \1/g' "$file"
+          done
+          
+          # 6. Buscar específicamente en archivos de pods
+          echo "🔧 Procesando archivos de Pods..."
+          find ios/Pods -type f -name "*.xcconfig" -exec sed -i '' 's/-G / /g' {} \;
+          find ios/Pods -type f -name "*.xcconfig" -exec sed -i '' 's/-G$//g' {} \;
+          find ios/Pods -type f -name "*.pbxproj" -exec sed -i '' 's/-G / /g' {} \;
+          find ios/Pods -type f -name "*.pbxproj" -exec sed -i '' 's/-G$//g' {} \;
+          
+          # 7. Actualizar versiones de deployment target
+          echo "🔧 Actualizando deployment targets..."
           find ios/Pods -name "*.xcconfig" -exec sed -i '' 's/-miphoneos-version-min=[0-9]*\.[0-9]*/-miphoneos-version-min=12.0/g' {} \;
           find ios/Pods -name "*.xcconfig" -exec sed -i '' 's/arm64-apple-ios[0-9]*\.[0-9]*/arm64-apple-ios12.0/g' {} \;
-          
-          # 6. Modificar directamente los archivos de proyecto de pods
-          echo "🔧 Modificando proyecto de pods..."
           find ios/Pods -name "*.pbxproj" -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9]*\.[0-9]*/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' {} \;
           
-          # 7. Eliminar opciones problemáticas
-          echo "🔧 Eliminando opciones problemáticas..."
-          find ios -name "*.xcconfig" -exec sed -i '' 's/-G / /g' {} \;
-          find ios -name "*.xcconfig" -exec sed -i '' 's/-G$//g' {} \;
-          
-          # 8. Verificar que no queden referencias a versiones antiguas
-          echo "🔍 Verificando configuración..."
-          grep -r "ios10\|ios11" ios/ || echo "✅ No se encontraron referencias a versiones antiguas"
+          # 8. Verificación final
+          echo "🔍 Verificando que no quede la opción -G..."
+          if grep -r "\-G" ios/ 2>/dev/null; then
+            echo "⚠️ Aún se encontraron referencias a -G, eliminando..."
+            grep -r "\-G" ios/ -l | xargs sed -i '' 's/-G//g'
+          else
+            echo "✅ No se encontraron referencias a -G"
+          fi
           
           echo "✅ CORRECCIÓN FORZADA COMPLETADA"
           EOF
@@ -115,6 +133,25 @@ workflows:
           
           # Ejecutar el script
           ./fix_ios_build.sh
+      - name: POST-INSTALL - Eliminar -G adicional
+        script: |
+          echo "🔧 POST-INSTALACIÓN: Eliminando cualquier -G restante..."
+          
+          # Buscar y eliminar CUALQUIER referencia a -G en todo el directorio ios
+          find ios -type f $$ -name "*.xcconfig" -o -name "*.pbxproj" $$ -print0 | xargs -0 grep -l "\-G" | while read file; do
+            echo "🔧 Limpiando: $file"
+            sed -i '' 's/-G[[:space:]]*/ /g' "$file"
+            sed -i '' 's/-G$//g' "$file"
+          done
+          
+          # Verificación final
+          echo "🔍 Verificación final..."
+          if find ios -type f $$ -name "*.xcconfig" -o -name "*.pbxproj" $$ -exec grep -l "\-G" {} \; 2>/dev/null; then
+            echo "⚠️ Aún hay archivos con -G, forzando eliminación..."
+            find ios -type f $$ -name "*.xcconfig" -o -name "*.pbxproj" $$ -exec sed -i '' 's/-G//g' {} \;
+          else
+            echo "✅ Todos los archivos están limpios"
+          fi
       - name: ULTRA FORCE - Build
         script: |
           # Limpiar Flutter
