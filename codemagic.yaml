@@ -20,7 +20,6 @@ workflows:
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 9.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 10.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 11.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/ios-arm64_x86_64-simulator/ios-arm64_x86_64-simulator/g' ios/Runner.xcodeproj/project.pbxproj
       - name: Update Podfile completely
         script: |
           # Crear un Podfile completamente nuevo con iOS 12.0
@@ -90,8 +89,8 @@ workflows:
           flutter pub get
       - name: Build ipa for distribution
         script: |
-          # Compilar con configuraciones específicas para iOS 12.0+
-          flutter build ios --release --no-codesign --target-platform ios-arm64
+          # Comando correcto para iOS sin codesigning
+          flutter build ios --release --no-codesign
     artifacts:
       - build/ios/iphoneos/Runner.app
       - /tmp/xcodebuild_logs/*.log
