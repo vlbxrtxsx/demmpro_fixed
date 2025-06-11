@@ -5,8 +5,8 @@ workflows:
     instance_type: mac_mini_m1
     environment:
       ios_signing:
-        distribution_type: development  # ← CAMBIADO A DEVELOPMENT
-        # Eliminamos bundle_identifier para usar el predeterminado
+        distribution_type: development  # Tipo de distribución más simple
+        bundle_identifier: com.example.demmproFixed  # Mantenemos el bundle ID
       flutter: stable
       xcode: latest
       cocoapods: default
