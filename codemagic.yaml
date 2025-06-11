@@ -23,7 +23,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - user@example.com
+          - sistemasdemmpro@gmail.com
         notify:
           success: true
           failure: false
