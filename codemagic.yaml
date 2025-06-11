@@ -14,14 +14,9 @@ workflows:
       - name: Flutter unit tests
         script: |
           flutter test || true
-      - name: Update iOS deployment target
-        script: |
-          # Actualizar la versión mínima de iOS a 12.0
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 10.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 11.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
       - name: Build ipa for distribution
         script: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign --verbose
     artifacts:
       - build/ios/iphoneos/Runner.app
       - /tmp/xcodebuild_logs/*.log
