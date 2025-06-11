@@ -14,23 +14,23 @@ workflows:
       - name: Flutter unit tests
         script: |
           flutter test || true
-      - name: ULTRA FORCE - Preparar entorno
+      - name: ULTRA FORCE - iOS 12.0
         script: |
           # Crear un script que modificará TODOS los archivos de configuración
           cat > fix_ios_build.sh << 'EOF'
           #!/bin/bash
           set -e
           
-          echo "🔨 INICIANDO CORRECCIÓN FORZADA DE CONFIGURACIÓN iOS"
+          echo "🔨 INICIANDO CORRECCIÓN FORZADA DE CONFIGURACIÓN iOS 12.0"
           
           # 1. Actualizar proyecto principal
           echo "📝 Actualizando proyecto principal..."
-          find ios -name "*.pbxproj" -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9]*\.[0-9]*/IPHONEOS_DEPLOYMENT_TARGET = 11.0/g' {} \;
+          find ios -name "*.pbxproj" -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9]*\.[0-9]*/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' {} \;
           
           # 2. Actualizar Podfile
           echo "📝 Reemplazando Podfile..."
           cat > ios/Podfile << 'EOT'
-          platform :ios, '11.0'
+          platform :ios, '12.0'
           
           ENV['COCOAPODS_DISABLE_STATS'] = 'true'
           
@@ -67,9 +67,10 @@ workflows:
               installer.pods_project.targets.each do |target|
                 flutter_additional_ios_build_settings(target)
                 target.build_configurations.each do |config|
-                  config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '11.0'
+                  config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
                   config.build_settings.delete 'ARCHS'
                   config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
+                  config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
                 end
               end
             end
@@ -90,16 +91,21 @@ workflows:
           
           # 5. FORZAR cambios en TODOS los archivos de configuración de pods
           echo "🔧 Forzando configuración en TODOS los archivos de pods..."
-          find ios/Pods -name "*.xcconfig" -exec sed -i '' 's/-miphoneos-version-min=[0-9]*\.[0-9]*/-miphoneos-version-min=11.0/g' {} \;
-          find ios/Pods -name "*.xcconfig" -exec sed -i '' 's/arm64-apple-ios[0-9]*\.[0-9]*/arm64-apple-ios11.0/g' {} \;
+          find ios/Pods -name "*.xcconfig" -exec sed -i '' 's/-miphoneos-version-min=[0-9]*\.[0-9]*/-miphoneos-version-min=12.0/g' {} \;
+          find ios/Pods -name "*.xcconfig" -exec sed -i '' 's/arm64-apple-ios[0-9]*\.[0-9]*/arm64-apple-ios12.0/g' {} \;
           
           # 6. Modificar directamente los archivos de proyecto de pods
           echo "🔧 Modificando proyecto de pods..."
-          find ios/Pods -name "*.pbxproj" -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9]*\.[0-9]*/IPHONEOS_DEPLOYMENT_TARGET = 11.0/g' {} \;
+          find ios/Pods -name "*.pbxproj" -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9]*\.[0-9]*/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' {} \;
           
           # 7. Eliminar opciones problemáticas
           echo "🔧 Eliminando opciones problemáticas..."
           find ios -name "*.xcconfig" -exec sed -i '' 's/-G / /g' {} \;
+          find ios -name "*.xcconfig" -exec sed -i '' 's/-G$//g' {} \;
+          
+          # 8. Verificar que no queden referencias a versiones antiguas
+          echo "🔍 Verificando configuración..."
+          grep -r "ios10\|ios11" ios/ || echo "✅ No se encontraron referencias a versiones antiguas"
           
           echo "✅ CORRECCIÓN FORZADA COMPLETADA"
           EOF
