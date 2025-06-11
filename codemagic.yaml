@@ -14,11 +14,16 @@ workflows:
       - name: Flutter unit tests
         script: |
           flutter test || true
+      - name: Clean project
+        script: |
+          flutter clean
+          cd ios && pod deintegrate && pod install && cd ..
       - name: Build ipa for distribution
         script: |
-          flutter build ipa --release --no-codesign
+          # Intentar con un comando diferente
+          flutter build ios --release --no-codesign
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/ios/iphoneos/Runner.app
       - /tmp/xcodebuild_logs/*.log
     publishing:
       email:
