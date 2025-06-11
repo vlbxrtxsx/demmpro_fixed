@@ -14,23 +14,114 @@ workflows:
       - name: Flutter unit tests
         script: |
           flutter test || true
-      - name: Simple iOS version update
+      - name: ULTRA FORCE - Preparar entorno
         script: |
-          # Solo cambiar la versión mínima a 11.0 (más compatible)
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 9.0/IPHONEOS_DEPLOYMENT_TARGET = 11.0/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 10.0/IPHONEOS_DEPLOYMENT_TARGET = 11.0/g' ios/Runner.xcodeproj/project.pbxproj
-      - name: Simple Podfile update
+          # Crear un script que modificará TODOS los archivos de configuración
+          cat > fix_ios_build.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          echo "🔨 INICIANDO CORRECCIÓN FORZADA DE CONFIGURACIÓN iOS"
+          
+          # 1. Actualizar proyecto principal
+          echo "📝 Actualizando proyecto principal..."
+          find ios -name "*.pbxproj" -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9]*\.[0-9]*/IPHONEOS_DEPLOYMENT_TARGET = 11.0/g' {} \;
+          
+          # 2. Actualizar Podfile
+          echo "📝 Reemplazando Podfile..."
+          cat > ios/Podfile << 'EOT'
+          platform :ios, '11.0'
+          
+          ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+          
+          project 'Runner', {
+            'Debug' => :debug,
+            'Profile' => :release,
+            'Release' => :release,
+          }
+          
+          def flutter_root
+            generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+            unless File.exist?(generated_xcode_build_settings_path)
+              raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+            end
+          
+            File.foreach(generated_xcode_build_settings_path) do |line|
+              matches = line.match(/FLUTTER_ROOT\=(.*)/)
+              return matches[1].strip if matches
+            end
+            raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}"
+          end
+          
+          require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+          
+          flutter_ios_podfile_setup
+          
+          target 'Runner' do
+            use_frameworks!
+            use_modular_headers!
+          
+            flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+            
+            post_install do |installer|
+              installer.pods_project.targets.each do |target|
+                flutter_additional_ios_build_settings(target)
+                target.build_configurations.each do |config|
+                  config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '11.0'
+                  config.build_settings.delete 'ARCHS'
+                  config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
+                end
+              end
+            end
+          end
+          EOT
+          
+          # 3. Limpiar completamente
+          echo "🧹 Limpiando entorno..."
+          cd ios
+          rm -rf Pods
+          rm -rf .symlinks
+          rm -f Podfile.lock
+          
+          # 4. Instalar pods
+          echo "📦 Instalando pods..."
+          pod install --repo-update
+          cd ..
+          
+          # 5. FORZAR cambios en TODOS los archivos de configuración de pods
+          echo "🔧 Forzando configuración en TODOS los archivos de pods..."
+          find ios/Pods -name "*.xcconfig" -exec sed -i '' 's/-miphoneos-version-min=[0-9]*\.[0-9]*/-miphoneos-version-min=11.0/g' {} \;
+          find ios/Pods -name "*.xcconfig" -exec sed -i '' 's/arm64-apple-ios[0-9]*\.[0-9]*/arm64-apple-ios11.0/g' {} \;
+          
+          # 6. Modificar directamente los archivos de proyecto de pods
+          echo "🔧 Modificando proyecto de pods..."
+          find ios/Pods -name "*.pbxproj" -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9]*\.[0-9]*/IPHONEOS_DEPLOYMENT_TARGET = 11.0/g' {} \;
+          
+          # 7. Eliminar opciones problemáticas
+          echo "🔧 Eliminando opciones problemáticas..."
+          find ios -name "*.xcconfig" -exec sed -i '' 's/-G / /g' {} \;
+          
+          echo "✅ CORRECCIÓN FORZADA COMPLETADA"
+          EOF
+          
+          # Hacer ejecutable el script
+          chmod +x fix_ios_build.sh
+          
+          # Ejecutar el script
+          ./fix_ios_build.sh
+      - name: ULTRA FORCE - Build
         script: |
-          # Solo actualizar la línea de platform en el Podfile existente
-          sed -i '' "s/platform :ios, '[0-9]*\.[0-9]*'/platform :ios, '11.0'/g" ios/Podfile
-      - name: Simple pod install
-        script: |
-          cd ios && pod install && cd ..
-      - name: Simple build
-        script: |
-          flutter build ios --release --no-codesign
+          # Limpiar Flutter
+          flutter clean
+          flutter pub get
+          
+          # Compilar con opciones específicas
+          FLUTTER_XCODE_ONLY_ACTIVE_ARCH=NO flutter build ios --release --no-codesign
     artifacts:
       - build/ios/iphoneos/Runner.app
+      - ios/Pods/Pods.xcodeproj/project.pbxproj
+      - ios/Podfile
+      - ios/Runner.xcodeproj/project.pbxproj
     publishing:
       email:
         recipients:
