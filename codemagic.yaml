@@ -14,26 +14,84 @@ workflows:
       - name: Flutter unit tests
         script: |
           flutter test || true
-      - name: Update iOS deployment target
+      - name: Update iOS deployment target in project
         script: |
-          # Actualizar la versión mínima de iOS a 12.0
+          # Actualizar TODAS las referencias de versión iOS en el proyecto
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 9.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 10.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 11.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
-      - name: Update Podfile iOS platform
+          sed -i '' 's/ios-arm64_x86_64-simulator/ios-arm64_x86_64-simulator/g' ios/Runner.xcodeproj/project.pbxproj
+      - name: Update Podfile completely
         script: |
-          # Actualizar la versión mínima de iOS en el Podfile a 12.0
-          sed -i '' "s/platform :ios, '9.0'/platform :ios, '12.0'/g" ios/Podfile
-          sed -i '' "s/platform :ios, '10.0'/platform :ios, '12.0'/g" ios/Podfile
-          sed -i '' "s/platform :ios, '11.0'/platform :ios, '12.0'/g" ios/Podfile
-      - name: Clean and reinstall pods
+          # Crear un Podfile completamente nuevo con iOS 12.0
+          cat > ios/Podfile << 'EOF'
+          # Uncomment this line to define a global platform for your project
+          platform :ios, '12.0'
+
+          # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+          ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+          project 'Runner', {
+            'Debug' => :debug,
+            'Profile' => :release,
+            'Release' => :release,
+          }
+
+          def flutter_root
+            generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+            unless File.exist?(generated_xcode_build_settings_path)
+              raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+            end
+
+            File.foreach(generated_xcode_build_settings_path) do |line|
+              matches = line.match(/FLUTTER_ROOT\=(.*)/)
+              return matches[1].strip if matches
+            end
+            raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+          end
+
+          require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+          flutter_ios_podfile_setup
+
+          target 'Runner' do
+            use_frameworks!
+            use_modular_headers!
+
+            flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+            
+            # Forzar iOS 12.0 para todos los pods
+            post_install do |installer|
+              installer.pods_project.targets.each do |target|
+                flutter_additional_ios_build_settings(target)
+                target.build_configurations.each do |config|
+                  config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+                  config.build_settings['ENABLE_BITCODE'] = 'NO'
+                end
+              end
+            end
+          end
+          EOF
+      - name: Clean and reinstall pods completely
         script: |
           cd ios
-          pod deintegrate
-          pod install
+          # Limpiar completamente
+          rm -rf Pods
+          rm -rf .symlinks
+          rm -rf Flutter/Flutter.framework
+          rm -rf Flutter/Flutter.podspec
+          rm -f Podfile.lock
+          # Reinstalar
+          pod install --repo-update
           cd ..
+      - name: Clean Flutter build
+        script: |
+          flutter clean
+          flutter pub get
       - name: Build ipa for distribution
         script: |
-          flutter build ios --release --no-codesign
+          # Compilar con configuraciones específicas para iOS 12.0+
+          flutter build ios --release --no-codesign --target-platform ios-arm64
     artifacts:
       - build/ios/iphoneos/Runner.app
       - /tmp/xcodebuild_logs/*.log
