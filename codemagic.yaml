@@ -4,32 +4,22 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     environment:
-      ios_signing:
-        distribution_type: development  # Tipo de distribución más simple
-        bundle_identifier: com.example.demmproFixed  # Mantenemos el bundle ID
       flutter: stable
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Set up code signing settings on Xcode project
-        script: |
-          xcode-project use-profiles
       - name: Get Flutter packages
         script: |
           flutter packages pub get
-      # - name: Flutter analyze
-      #   script: |
-      #     flutter analyze --fatal-infos
       - name: Flutter unit tests
         script: |
           flutter test || true
       - name: Build ipa for distribution
         script: |
-          flutter build ipa --release
+          flutter build ipa --release --no-codesign
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-      - flutter_drive.log
     publishing:
       email:
         recipients:
