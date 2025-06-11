@@ -14,16 +14,33 @@ workflows:
       - name: Flutter unit tests
         script: |
           flutter test || true
+      - name: Update iOS deployment target
+        script: |
+          # Actualizar la versión mínima de iOS a 12.0
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 10.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 11.0/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' ios/Runner.xcodeproj/project.pbxproj
+      - name: Update Podfile iOS platform
+        script: |
+          # Actualizar la versión mínima de iOS en el Podfile a 12.0
+          sed -i '' 's/platform :ios, \'9.0\'/platform :ios, \'12.0\'/g' ios/Podfile
+          sed -i '' 's/platform :ios, \'10.0\'/platform :ios, \'12.0\'/g' ios/Podfile
+          sed -i '' 's/platform :ios, \'11.0\'/platform :ios, \'12.0\'/g' ios/Podfile
+      - name: Clean and reinstall pods
+        script: |
+          cd ios
+          pod deintegrate
+          pod install
+          cd ..
       - name: Build ipa for distribution
         script: |
-          flutter build ios --release --no-codesign --verbose
+          flutter build ios --release --no-codesign
     artifacts:
       - build/ios/iphoneos/Runner.app
       - /tmp/xcodebuild_logs/*.log
     publishing:
       email:
         recipients:
-          - sistemasdemmpro@gmail.com
+          - user@example.com
         notify:
           success: true
           failure: false
